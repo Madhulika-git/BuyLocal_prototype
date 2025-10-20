@@ -1,0 +1,80 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account Settings</title>
+<style>
+body { font-family: Arial, sans-serif; background:#f7f9fc; margin:0; padding:0;}
+header { display:flex; align-items:center; padding:15px 30px; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,0.1);}
+.back-btn { font-size:30px; cursor:pointer; margin-right:20px;}
+.container { max-width:600px; margin:50px auto; background:#fff; padding:30px; border-radius:15px; box-shadow:0 4px 15px rgba(0,0,0,0.1);}
+.container h2 { text-align:center; margin-bottom:20px;}
+input, select { width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:1px solid #ccc; }
+button { padding:12px 20px; border:none; border-radius:8px; background:#6c5ce7; color:white; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="back-btn" onclick="goBack()">&#8592;</span>
+  <h2>Account Settings</h2>
+</header>
+
+<div class="container">
+  <label>Name</label>
+  <input type="text" id="name" disabled>
+
+  <label>Email</label>
+  <input type="email" id="email" disabled>
+
+  <label>Role</label>
+  <input type="text" id="role" disabled>
+
+  <label>Phone (optional)</label>
+  <input type="text" id="phone">
+
+  <label>Profile Picture URL (optional)</label>
+  <input type="text" id="profilePic">
+
+  <button id="editBtn">Edit Info</button>
+</div>
+
+<script>
+// Load user
+let logged = JSON.parse(localStorage.getItem('loggedInUser') || 'null');
+if(!logged){ alert('Please login'); window.location.href='login.html'; }
+
+document.getElementById('name').value = logged.name || '';
+document.getElementById('email').value = logged.email;
+document.getElementById('role').value = logged.role;
+document.getElementById('phone').value = logged.phone || '';
+document.getElementById('profilePic').value = logged.profilePic || '';
+
+function goBack(){ window.location.href='home.html'; }
+
+document.getElementById('editBtn').onclick = ()=>{
+  const pwd = prompt('Enter your current password to edit account info:');
+  if(!pwd) return;
+
+  const users = JSON.parse(localStorage.getItem('users')||'[]');
+  const me = users.find(u=>u.email===logged.email && u.password===pwd);
+  if(!me){ alert('Incorrect password'); return; }
+
+  const newName = document.getElementById('name').value;
+  const newPhone = document.getElementById('phone').value;
+  const newProfilePic = document.getElementById('profilePic').value;
+
+  me.name = newName || me.name;
+  me.phone = newPhone || me.phone;
+  me.profilePic = newProfilePic || me.profilePic;
+
+  localStorage.setItem('users', JSON.stringify(users));
+  logged = me;
+  localStorage.setItem('loggedInUser', JSON.stringify(logged));
+  alert('Account updated successfully!');
+};
+</script>
+</body>
+</html>

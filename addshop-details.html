@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BuyLocal - Add/Edit Shop Details</title>
+<style>
+/* Keep your original styles exactly as they are */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #fafafa;
+}
+header {
+  display: flex;
+  align-items: center;
+  padding: 15px 30px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+header img { height: 120px; }
+.back-btn {
+  font-size: 30px;
+  cursor: pointer;
+  margin-right: 20px;
+}
+.container {
+  max-width: 800px;
+  margin: 30px auto;
+  padding: 30px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+}
+.container h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #333;
+}
+label { display:block; margin:15px 0 5px; color:#555; }
+input[type="text"], input[type="email"], input[type="file"], textarea, select {
+  width:100%; padding:10px; border-radius:10px; border:1px solid #ccc; outline:none;
+}
+textarea { resize: vertical; }
+button {
+  margin-top:20px;
+  padding:12px 25px;
+  background-color:#6c5ce7;
+  color:white;
+  border:none;
+  border-radius:12px;
+  cursor:pointer;
+  transition:0.3s;
+}
+button:hover { background-color:#5a4bd4; }
+img.preview { width:100px; height:100px; object-fit:cover; margin:5px; border-radius:10px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);}
+.location-row { display:flex; gap:10px; align-items:center; margin-bottom:20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="back-btn" onclick="goBack()">&#8592;</span>
+  <img src="logo.png" alt="BuyLocal Logo">
+</header>
+
+<div class="container">
+  <h2 id="formTitle">Add Shop Details</h2>
+  <label for="shopName">Shop Name</label>
+  <input type="text" id="shopName" placeholder="Enter shop name">
+
+  <label for="shopAddress">Address</label>
+  <input type="text" id="shopAddress" placeholder="Enter shop address">
+
+  <label for="shopContact">Contact Info</label>
+  <input type="text" id="shopContact" placeholder="Phone or email">
+
+  <label for="shopCategory">Category</label>
+  <input type="text" id="shopCategory" placeholder="Shop category">
+
+  <label for="shopProducts">Products (one per line)</label>
+  <textarea id="shopProducts" rows="4" placeholder="Enter products, one per line"></textarea>
+
+  <label for="shopSales">Sales Images (optional)</label>
+  <input type="file" id="shopSales" multiple accept="image/*">
+  <div id="salesPreview"></div>
+
+  <label for="shopSocial">Social Media Links (optional, one per line)</label>
+  <textarea id="shopSocial" rows="3" placeholder="Paste each link on a new line"></textarea>
+
+  <label for="shopLocation">Shop Location (Google Maps URL)</label>
+  <div class="location-row">
+    <input type="text" id="shopLocation" placeholder="Paste Google Maps URL">
+    <button type="button" onclick="getLocation()">Share Location</button>
+  </div>
+
+  <button id="saveBtn">Save Shop</button>
+</div>
+
+<script type="module">
+// Firebase setup
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import { getFirestore, collection, addDoc, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyAtsmXck_fS5-iXK3r_17ND4GJ-pfhBrZc",
+  authDomain: "buylocal-b1f0f.firebaseapp.com",
+  projectId: "buylocal-b1f0f",
+  storageBucket: "buylocal-b1f0f.firebasestorage.app",
+  messagingSenderId: "461692300773",
+  appId: "1:461692300773:web:263d2b30ec0dfa95c6530c"
+};
+
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Logged-in user
+let logged = JSON.parse(localStorage.getItem('loggedInUser')||'null');
+if(!logged){ alert('Please login first'); window.location.href='login.html'; }
+
+// Back button
+window.goBack = () => { window.location.href='addshop.html'; };
+
+// Handle sales image preview
+const shopSalesInput = document.getElementById('shopSales');
+const salesPreview = document.getElementById('salesPreview');
+shopSalesInput.addEventListener('change', ()=>{
+  salesPreview.innerHTML = '';
+  Array.from(shopSalesInput.files).forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.className = 'preview';
+      salesPreview.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+});
+
+// Get current location
+function getLocation(){
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(position=>{
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      document.getElementById('shopLocation').value = `https://www.google.com/maps?q=${lat},${lng}`;
+    }, ()=>alert('Allow location access to share location.'));
+  } else { alert('Geolocation not supported.'); }
+}
+
+// Load shop if editing
+let editShop = JSON.parse(localStorage.getItem('editShop')||'null');
+if(editShop){
+  document.getElementById('formTitle').textContent='Edit Shop Details';
+  document.getElementById('shopName').value = editShop.name;
+  document.getElementById('shopAddress').value = editShop.address;
+  document.getElementById('shopContact').value = editShop.contact;
+  document.getElementById('shopCategory').value = editShop.category;
+  document.getElementById('shopProducts').value = editShop.products.join('\n');
+  document.getElementById('shopSocial').value = (editShop.social||[]).join('\n');
+  document.getElementById('shopLocation').value = editShop.maps||'';
+}
+
+// Save shop
+document.getElementById('saveBtn').onclick = async ()=>{
+  const name = document.getElementById('shopName').value.trim();
+  const address = document.getElementById('shopAddress').value.trim();
+  const contact = document.getElementById('shopContact').value.trim();
+  const category = document.getElementById('shopCategory').value.trim();
+  const products = document.getElementById('shopProducts').value.split('\n').map(p=>p.trim()).filter(Boolean);
+  const social = document.getElementById('shopSocial').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const maps = document.getElementById('shopLocation').value.trim();
+
+  // Handle sales images
+  const salesFiles = Array.from(shopSalesInput.files);
+  const salesImages = [];
+  if(salesFiles.length>0){
+    let loaded = 0;
+    salesFiles.forEach(file=>{
+      const reader = new FileReader();
+      reader.onload = e=>{
+        salesImages.push(e.target.result);
+        loaded++;
+        if(loaded === salesFiles.length) saveShopData();
+      };
+      reader.readAsDataURL(file);
+    });
+  } else { saveShopData(); }
+
+  async function saveShopData(){
+    try{
+      if(editShop && editShop.id){
+        // update existing Firestore doc
+        const shopRef = doc(db, "shops", editShop.id);
+        await updateDoc(shopRef, { 
+          name, address, contact, category, products, social, maps, sales: salesImages 
+        });
+        alert('Shop updated successfully!');
+      } else {
+        // new shop
+        await addDoc(collection(db, "shops"), {
+          creator: logged.email,
+          name, address, contact, category, products, social, maps, sales: salesImages
+        });
+        alert('Shop added successfully!');
+      }
+      localStorage.removeItem('editShop');
+      window.location.href='addshop.html';
+    } catch(e){
+      console.error(e);
+      alert('Error saving shop. Please try again.');
+    }
+  }
+}
+</script>
+</body>
+</html>
